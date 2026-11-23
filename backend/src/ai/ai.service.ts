@@ -1,5 +1,5 @@
 
-import { Injectable } from '@nestjs/common';
+import { Injectable , InternalServerErrorException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { GoogleGenAI } from '@google/genai';
 import { z } from 'zod';
@@ -42,11 +42,17 @@ export class AiService {
 
     const parsedResponse = JSON.parse(response.text ?? '{}');
 
-const validatedResponse = userSchema.parse(parsedResponse); // becuase ai might return age as string , so parse only checks valid json, so added zod for proper validation
+    const validationResult = userSchema.safeParse(parsedResponse);
 
-return {
-  question: message,
-  answer: validatedResponse,
-};
+    if (!validationResult.success) {
+      throw new InternalServerErrorException('AI returned invalid data');
+    }
+
+    const validatedResponse = validationResult.data; 
+
+    return {
+      question: message,
+      answer: validatedResponse,
+    };
   }
 }
