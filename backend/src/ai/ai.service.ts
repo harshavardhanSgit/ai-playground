@@ -1,5 +1,6 @@
 
-import { Injectable , InternalServerErrorException } from '@nestjs/common';
+import { Injectable, InternalServerErrorException } from '@nestjs/common';
+import type { Response } from 'express';
 import { ConfigService } from '@nestjs/config';
 import { GoogleGenAI } from '@google/genai';
 import { z } from 'zod';
@@ -48,11 +49,26 @@ export class AiService {
       throw new InternalServerErrorException('AI returned invalid data');
     }
 
-    const validatedResponse = validationResult.data; 
+    const validatedResponse = validationResult.data;
 
     return {
       question: message,
       answer: validatedResponse,
     };
+  }
+
+  async chatStream(message: string, res: Response) {
+    const response = await this.ai.models.generateContentStream({
+      model: 'gemini-3.5-flash-lite',
+      contents: message,
+    });
+
+    for await (const chunk of response) {
+      const text = chunk.text;
+      if (text) {
+        res.write(`data: ${JSON.stringify(text)}\n\n`);
+      }
+    }
+    res.end();
   }
 }
